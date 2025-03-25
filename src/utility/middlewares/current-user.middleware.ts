@@ -15,9 +15,7 @@ declare global {
 
 @Injectable()
 export class CurrentUserMiddleware implements NestMiddleware {
-  constructor(private readonly userService: UsersService) {
-    
-  }
+  constructor(private readonly userService: UsersService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -30,13 +28,20 @@ export class CurrentUserMiddleware implements NestMiddleware {
       req.currentUser = undefined;
       next();
     } else {
-      const token = authHeader.split(' ')[1];
-      const { id } = <JwtPayload>(
-        verify(token, process.env.JWT_SECRET ?? 'hashedSecret')
-      );
-      const currentUser = await this.userService.findOne(+id);
-      req.currentUser = currentUser;
-      next();
+      try {
+        const token = authHeader.split(' ')[1];
+        const { id } = <JwtPayload>(
+          verify(token, process.env.JWT_SECRET ?? 'hashedSecret')
+        );
+        const currentUser = await this.userService.findOne(+id);
+        req.currentUser = currentUser;
+        return;
+      } catch (error) {
+        console.log('Invalid token');
+        req.currentUser = undefined;
+      } finally {
+        next();
+      }
     }
   }
 }
